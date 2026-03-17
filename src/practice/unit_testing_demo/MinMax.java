@@ -1,4 +1,4 @@
-package com.example;
+package practice.unit_testing_demo;
 
 public class MinMax {
 
