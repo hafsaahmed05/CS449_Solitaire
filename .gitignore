@@ -1,7 +1,25 @@
-.vs/
-bin/
-obj/
-*.user
-*.suo
-*.log
+# Maven build folder
+target/
+
+# IntelliJ IDEA files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Compiled class files
 *.class
+out/
+
+# Logs
+*.log
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
