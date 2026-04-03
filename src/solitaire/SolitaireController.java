@@ -1,109 +1,162 @@
 package solitaire;
 
 /**
- * SolitaireController connects the SolitaireModel and SolitaireView.
- * It handles user input from the UI and updates the model and view as needed.
+ * SolitaireController — wires SolitaireModel and SolitaireView (MVC).
  *
- * The controller listens for the New Game button and for clicks on board cells.
- * Moves are handled with a two-click system:
- * the player first selects a peg,
- * then clicks a destination cell to attempt the move.
+ * Implements:
+ *   - SolitaireView.ViewListener   (New Game / Home events)
+ *   - CellButton.CellClickListener (cell clicks from BoardPanel)
+ *
+ * When a new game is requested the controller asks the view which board
+ * type and size the user selected, constructs the correct model subclass,
+ * and hands it to the view.
  */
-
 public class SolitaireController
         implements SolitaireView.ViewListener,
         CellButton.CellClickListener {
 
-    private final SolitaireModel model;
-    private final SolitaireView  view;
+    private SolitaireModel model;
+    private final SolitaireView view;
 
     private int selectedRow = -1;
     private int selectedCol = -1;
 
-    private static final String DEFAULT_STATUS = "Select a peg and jump over another peg.";
-
+    // ------------------------------------------------------------------
     // Construction
-    public SolitaireController(SolitaireModel model, SolitaireView view) {
-        this.model = model;
-        this.view  = view;
+    // ------------------------------------------------------------------
 
+    public SolitaireController(SolitaireView view) {
+        this.view = view;
         view.setViewListener(this);
         view.setCellClickListener(this);
+
+        // Start with default English 7
+        this.model = new EnglishModel(7);
         view.setModel(model);
         syncView();
     }
 
+    // ------------------------------------------------------------------
     // ViewListener
+    // ------------------------------------------------------------------
+
     @Override
     public void onNewGame() {
-        model.initBoard();
+        // Read user selections from the view
+        String type = view.getSelectedBoardType();  // "English" / "Hexagon" / "Diamond"
+        int    size = view.getSelectedBoardSize();
+
+        model = buildModel(type, size);
         clearSelection();
+        view.setModel(model);
         syncView();
         view.setStatus("New game started. Select a peg to move.");
     }
 
+    private SolitaireModel buildModel(String type, int size) {
+        switch (type) {
+            case "Hexagon": return new HexagonModel(size);
+            case "Diamond": return new DiamondModel(size);
+            default:        return new EnglishModel(size);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // CellClickListener
+    // ------------------------------------------------------------------
+
     @Override
     public void onCellClicked(int row, int col) {
-
         if (!model.isValidCell(row, col)) {
             clearSelection();
-            view.setStatus(DEFAULT_STATUS);
             return;
         }
 
         int state = model.getCellState(row, col);
 
         if (selectedRow == -1) {
+            if (state == SolitaireModel.PEG) {
+                selectedRow = row;
+                selectedCol = col;
+                view.setSelectedCell(row, col);
+                view.setStatus("Peg selected at (" + row + ", " + col + "). Click a destination.");
+            } else {
+                view.setStatus("Please click on a peg to select it.");
+            }
+        } else {
+            if (row == selectedRow && col == selectedCol) {
+                clearSelection();
+                view.setStatus("Selection cleared.");
+                return;
+            }
 
             if (state == SolitaireModel.PEG) {
                 selectedRow = row;
                 selectedCol = col;
                 view.setSelectedCell(row, col);
-            } else {
-                view.setStatus(DEFAULT_STATUS);
+                view.setStatus("Peg re-selected at (" + row + ", " + col + "). Click a destination.");
+                return;
             }
 
-            return;
-        }
-
-        if (row == selectedRow && col == selectedCol) {
+            boolean moved = model.makeMove(selectedRow, selectedCol, row, col);
             clearSelection();
-            view.setStatus(DEFAULT_STATUS);
-            return;
-        }
 
-        if (state == SolitaireModel.PEG) {
-            selectedRow = row;
-            selectedCol = col;
-            view.setSelectedCell(row, col);
-            return;
-        }
-
-        boolean moved = model.makeMove(selectedRow, selectedCol, row, col);
-
-        clearSelection();
-
-        if (moved) {
-
-            syncView();
-
-            if (model.isWon()) {
-                view.showGameOver(true);
+            if (moved) {
+                syncView();
+                if (model.isWon()) {
+                    view.showGameOver(true);
+                } else if (model.isGameOver()) {
+                    view.showGameOver(false);
+                }
+            } else {
+                view.setStatus("Illegal move — select a peg and jump over an adjacent peg.");
             }
-            else if (model.isGameOver()) {
-                view.showGameOver(false);
-            }
-            else {
-                view.setStatus(DEFAULT_STATUS);
-            }
-
-        } else {
-            view.setStatus("Invalid move.");
         }
     }
 
+    @Override
+    public void onAutoplay() {
+
+        new Thread(() -> {
+
+            while (!model.isGameOver()) {
+
+                boolean moved = model.makeAnyMove();
+
+                if (!moved) break;
+
+                try {
+                    Thread.sleep(300); // slow down for animation
+                } catch (InterruptedException ignored) {}
+
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    syncView();
+                });
+            }
+
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                if (model.isWon()) {
+                    view.showGameOver(true);
+                } else {
+                    view.showGameOver(false);
+                }
+            });
+
+        }).start();
+    }
+
+    @Override
+    public void onRandomize() {
+        model.randomizeBoard();
+        clearSelection();
+        syncView();
+        view.setStatus("Board randomized!");
+    }
+
+    // ------------------------------------------------------------------
     // Helpers
+    // ------------------------------------------------------------------
+
     private void clearSelection() {
         selectedRow = -1;
         selectedCol = -1;

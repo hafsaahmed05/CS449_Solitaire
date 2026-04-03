@@ -10,9 +10,8 @@ import javax.swing.SwingUtilities;
 public class Main {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            SolitaireModel      model      = new SolitaireModel();
-            SolitaireView       view       = new SolitaireView();
-            SolitaireController controller = new SolitaireController(model, view);
+            SolitaireView view = new SolitaireView();
+            new SolitaireController(view);
             view.setVisible(true);
         });
     }

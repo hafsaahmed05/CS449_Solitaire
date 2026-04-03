@@ -1,50 +1,66 @@
 package solitaire;
 
 /**
- * SolitaireModel contains the game logic for a standard English Peg Solitaire board (size 7).
+ * SolitaireModel — abstract base class for all board types.
  *
- * Each cell on the board can be:
- *   INVALID (-1) – not part of the playable board
- *   EMPTY   (0)  – a valid spot with no peg
- *   PEG     (1)  – a peg is present
+ * All game logic (move validation, game-over detection, peg counting) lives
+ * here and is shared by every board type.
  *
- * As of now, the board uses the traditional English cross shape. The center cell (3,3)
- * starts empty and all other valid cells start with a peg.
+ * Subclasses must implement:
+ *   - getGridSize()     : the width/height of the backing 2-D array
+ *   - isValidCell()     : which cells belong to this board shape
+ *   - getCentreRow/Col(): which cell starts empty
  */
-
-public class SolitaireModel {
+public abstract class SolitaireModel {
 
     public static final int INVALID = -1;
     public static final int EMPTY   =  0;
     public static final int PEG     =  1;
 
-    private static final int SIZE = 7;
-    /** Exposed so the view can size itself without hard-coding 7. */
-    public  static final int SIZE_CONST = SIZE;
+    // Still needed by SolitaireView / BoardPanel for sizing the English board.
+    // Each subclass exposes its own grid size via getGridSize().
+    public static final int SIZE_CONST = 7;
 
-    private int[][] board;
-    private int pegsRemaining;
-
-    // Four orthogonal directions: {dRow, dCol}
     private static final int[][] DIRECTIONS = {
-            {-1,  0},  // up
-            { 1,  0},  // down
-            { 0, -1},  // left
-            { 0,  1}   // right
+            {-1,  0}, { 1,  0}, { 0, -1}, { 0,  1}
     };
 
-    public SolitaireModel() {
-        initBoard();
-    }
+    protected int[][] board;
+    protected int pegsRemaining;
 
-    // Initialisation
-    /** Reset the board to the standard English starting position. */
+    // ------------------------------------------------------------------
+    // Abstract contract
+    // ------------------------------------------------------------------
+
+    /** Side length of the square backing array (may be larger than "size"). */
+    public abstract int getGridSize();
+
+    /** True when (row, col) is a playable cell for this board shape. */
+    public abstract boolean isValidCell(int row, int col);
+
+    /** Row index of the cell that starts empty. */
+    protected abstract int getCentreRow();
+
+    /** Column index of the cell that starts empty. */
+    protected abstract int getCentreCol();
+
+    protected int[][] getDirections() {
+        return new int[][] {
+                {-1, 0}, {1, 0},   // vertical
+                {0, -1}, {0, 1}    // horizontal
+        };
+    }
+    // ------------------------------------------------------------------
+    // Initialisation  (shared)
+    // ------------------------------------------------------------------
+
     public void initBoard() {
-        board = new int[SIZE][SIZE];
+        int g = getGridSize();
+        board = new int[g][g];
         pegsRemaining = 0;
 
-        for (int r = 0; r < SIZE; r++) {
-            for (int c = 0; c < SIZE; c++) {
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
                 if (isValidCell(r, c)) {
                     board[r][c] = PEG;
                     pegsRemaining++;
@@ -54,39 +70,14 @@ public class SolitaireModel {
             }
         }
 
-        // The centre cell starts empty
-        board[3][3] = EMPTY;
+        board[getCentreRow()][getCentreCol()] = EMPTY;
         pegsRemaining--;
     }
 
-    /**
-     * Returns true if (row, col) is inside the playable English cross shape.
-     */
-    public boolean isValidCell(int row, int col) {
-        if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return false;
-        // Corner cutouts: rows 0-1 and 5-6 only have cols 2-4
-        if ((row < 2 || row > 4) && (col < 2 || col > 4)) return false;
-        return true;
-    }
+    // ------------------------------------------------------------------
+    // Move logic  (shared)
+    // ------------------------------------------------------------------
 
-    // Move logic
-    /**
-     * Attempts to perform a move where a peg jumps over an adjacent peg
-     * and lands in an empty cell two spaces away.
-     *
-     * Preconditions:
-     * - (fromRow, fromCol) contains a PEG
-     * - The move is horizontal or vertical
-     * - The destination cell is EMPTY
-     * - There is a PEG between the source and destination
-     *
-     * Postconditions (if the move is legal):
-     * - The source cell becomes EMPTY
-     * - The jumped peg is removed
-     * - The destination cell becomes a PEG
-     *
-     * @return true if the move was valid and applied, false otherwise.
-     */
     public boolean makeMove(int fromRow, int fromCol, int toRow, int toCol) {
         if (!isLegalMove(fromRow, fromCol, toRow, toCol)) return false;
 
@@ -97,48 +88,97 @@ public class SolitaireModel {
         board[midRow][midCol]   = EMPTY;
         board[toRow][toCol]     = PEG;
         pegsRemaining--;
-
         return true;
     }
 
-    /**
-     * Returns true if moving from (fromRow,fromCol) to (toRow,toCol) is legal.
-     */
-    public boolean isLegalMove(int fromRow, int fromCol, int toRow, int toCol) {
-        // Both cells must be on the board
-        if (!isValidCell(fromRow, fromCol) || !isValidCell(toRow, toCol)) return false;
+    public boolean isLegalMove(int r1, int c1, int r2, int c2) {
 
-        // Source must have a peg, destination must be empty
-        if (board[fromRow][fromCol] != PEG)   return false;
-        if (board[toRow][toCol]     != EMPTY) return false;
+        if (!isValidCell(r1, c1) || !isValidCell(r2, c2)) return false;
+        if (getCellState(r1, c1) != PEG) return false;
+        if (getCellState(r2, c2) != EMPTY) return false;
 
-        int dr = toRow - fromRow;
-        int dc = toCol - fromCol;
+        for (int[] d : getDirections()) {
 
-        // Must be exactly 2 steps in one orthogonal direction
-        if (!((Math.abs(dr) == 2 && dc == 0) || (dr == 0 && Math.abs(dc) == 2))) return false;
+            int midR = r1 + d[0];
+            int midC = c1 + d[1];
 
-        // The jumped cell must contain a peg
-        int midRow = (fromRow + toRow) / 2;
-        int midCol = (fromCol + toCol) / 2;
-        return board[midRow][midCol] == PEG;
+            int destR = r1 + 2 * d[0];
+            int destC = c1 + 2 * d[1];
+
+            if (destR == r2 && destC == c2) {
+                return isValidCell(midR, midC)
+                        && getCellState(midR, midC) == PEG;
+            }
+        }
+
+        return false;
     }
 
-    // Game-over detection
+    public boolean makeAnyMove() {
+        int g = getGridSize();
 
-    /**
-     * Returns true when no legal move exists anywhere on the board.
-     */
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
+
+                if (board[r][c] == PEG) {
+
+                    // try all 4 directions
+                    if (makeMove(r, c, r, c + 2)) return true;
+                    if (makeMove(r, c, r, c - 2)) return true;
+                    if (makeMove(r, c, r + 2, c)) return true;
+                    if (makeMove(r, c, r - 2, c)) return true;
+                }
+            }
+        }
+
+        return false; // no moves left
+    }
+
+    // ------------------------------------------------------------------
+    // Randomize Board
+    // ------------------------------------------------------------------
+    public void randomizeBoard() {
+        java.util.Random rand = new java.util.Random();
+
+        int g = getGridSize();
+        pegsRemaining = 0;
+
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
+
+                if (isValidCell(r, c)) {
+                    board[r][c] = rand.nextBoolean() ? PEG : EMPTY;
+
+                    if (board[r][c] == PEG) {
+                        pegsRemaining++;
+                    }
+                } else {
+                    board[r][c] = INVALID;
+                }
+            }
+        }
+
+        // Ensure at least one empty space (so moves are possible)
+        int centerR = getCentreRow();
+        int centerC = getCentreCol();
+
+        if (board[centerR][centerC] == PEG) {
+            board[centerR][centerC] = EMPTY;
+            pegsRemaining--;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Game-over detection  (shared)
+    // ------------------------------------------------------------------
+
     public boolean isGameOver() {
-        for (int r = 0; r < SIZE; r++) {
-            for (int c = 0; c < SIZE; c++) {
+        int g = getGridSize();
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
                 if (board[r][c] == PEG) {
                     for (int[] d : DIRECTIONS) {
-                        int mr = r + d[0];
-                        int mc = c + d[1];
-                        int tr = r + 2 * d[0];
-                        int tc = c + 2 * d[1];
-                        if (isLegalMove(r, c, tr, tc)) return false;
+                        if (isLegalMove(r, c, r + 2*d[0], c + 2*d[1])) return false;
                     }
                 }
             }
@@ -146,45 +186,37 @@ public class SolitaireModel {
         return true;
     }
 
-    /** Returns true if the player has won (exactly 1 peg remaining). */
-    public boolean isWon() {
-        return pegsRemaining == 1;
-    }
+    public boolean isWon() { return pegsRemaining == 1; }
 
+    // ------------------------------------------------------------------
     // Getters
+    // ------------------------------------------------------------------
 
-    public int getCellState(int row, int col) {
-        return board[row][col];
-    }
+    public int getCellState(int row, int col) { return board[row][col]; }
+    public int getPegsRemaining()             { return pegsRemaining; }
 
-    public int getPegsRemaining() {
-        return pegsRemaining;
-    }
+    /** Convenience alias so old code calling getBoardSize() still works. */
+    public int getBoardSize() { return getGridSize(); }
 
-    public int getBoardSize() {
-        return SIZE;
-    }
+    // ------------------------------------------------------------------
+    // Test helpers  (package-private)
+    // ------------------------------------------------------------------
 
-    /**
-     * Test-only: overwrite the board and recount pegs.
-     * Package-private so only test helpers in the same package can call it.
-     */
     void setBoardState(int[][] newBoard) {
+        int g = getGridSize();
         pegsRemaining = 0;
-        for (int r = 0; r < SIZE; r++) {
-            for (int c = 0; c < SIZE; c++) {
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
                 board[r][c] = newBoard[r][c];
                 if (board[r][c] == PEG) pegsRemaining++;
             }
         }
     }
 
-    /** Returns a deep copy of the board (useful for tests). */
     public int[][] getBoardCopy() {
-        int[][] copy = new int[SIZE][SIZE];
-        for (int r = 0; r < SIZE; r++) {
-            System.arraycopy(board[r], 0, copy[r], 0, SIZE);
-        }
+        int g = getGridSize();
+        int[][] copy = new int[g][g];
+        for (int r = 0; r < g; r++) System.arraycopy(board[r], 0, copy[r], 0, g);
         return copy;
     }
 }

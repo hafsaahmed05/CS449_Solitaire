@@ -29,9 +29,16 @@ public class SolitaireView extends JFrame {
 
     private boolean gameShowing = false;
 
+    private HomePanel homePanel;
+
+    private JButton randomizeButton;
+    private JButton autoplayButton;
+
     /** Listener for high-level UI events (implemented by SolitaireController). */
     public interface ViewListener {
         void onNewGame();
+        void onRandomize();
+        void onAutoplay();
     }
 
     private ViewListener viewListener;
@@ -82,10 +89,43 @@ public class SolitaireView extends JFrame {
             }
         });
 
+        randomizeButton = new JButton("Randomize");
+        randomizeButton.setFont(new Font("Georgia", Font.BOLD, 13));
+        randomizeButton.setBackground(new Color(0x3498DB));
+        randomizeButton.setForeground(Color.WHITE);
+        randomizeButton.setFocusPainted(false);
+        randomizeButton.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+        randomizeButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        randomizeButton.addActionListener(e -> {
+            if (viewListener != null) {
+                viewListener.onRandomize();
+            }
+        });
+
+        autoplayButton = new JButton("Autoplay");
+        autoplayButton.setFont(new Font("Georgia", Font.BOLD, 13));
+        autoplayButton.setBackground(new Color(0x2ECC71));
+        autoplayButton.setForeground(Color.WHITE);
+        autoplayButton.setFocusPainted(false);
+        autoplayButton.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+        autoplayButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        autoplayButton.addActionListener(e -> {
+            if (viewListener != null) {
+                viewListener.onAutoplay();
+            }
+        });
+
+        randomizeButton.setVisible(false);
+        autoplayButton.setVisible(false);
+
         topBar.add(titleLabel);
         topBar.add(Box.createHorizontalStrut(20));
         topBar.add(pegsLabel);
         topBar.add(newGameButton);
+        topBar.add(autoplayButton);
+        topBar.add(randomizeButton);
         add(topBar, BorderLayout.NORTH);
 
         // Panels that switch between HOME and GAME
@@ -105,7 +145,7 @@ public class SolitaireView extends JFrame {
         gamePanel.add(boardPanel);
 
         // Home panel
-        HomePanel homePanel = new HomePanel(() -> {
+        homePanel = new HomePanel(() -> {
             if (viewListener != null) viewListener.onNewGame();
             showGame();
         });
@@ -129,8 +169,10 @@ public class SolitaireView extends JFrame {
         setResizable(false);
     }
 
-    // Wiring
+    public String getSelectedBoardType() { return homePanel.getSelectedType(); }
+    public int    getSelectedBoardSize() { return homePanel.getSelectedSize(); }
 
+    // Wiring
     public void setViewListener(ViewListener listener) {
         this.viewListener = listener;
     }
@@ -154,11 +196,27 @@ public class SolitaireView extends JFrame {
     public void showGame() {
         cardLayout.show(mainPanel, GAME);
         gameShowing = true;
+
+        randomizeButton.setVisible(true);
+        autoplayButton.setVisible(true);
+
+        pack();
+        setLocationRelativeTo(null);
+        revalidate();
+        repaint();
     }
 
     public void showHome() {
         cardLayout.show(mainPanel, HOME);
         gameShowing = false;
+
+        randomizeButton.setVisible(false);
+        autoplayButton.setVisible(false);
+
+        pack();
+        setLocationRelativeTo(null);
+        revalidate();
+        repaint();
     }
 
     private boolean isGameShowing() { return gameShowing;}
@@ -172,4 +230,5 @@ public class SolitaireView extends JFrame {
                 won ? "Congratulations!" : "Game Over",
                 won ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
     }
+
 }

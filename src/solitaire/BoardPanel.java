@@ -43,18 +43,35 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
 
     private void rebuildGrid() {
         removeAll();
+
         int size = model.getBoardSize();
         cells = new CellButton[size][size];
 
-        setLayout(new GridLayout(size, size, 2, 2));
+        setLayout(new GridLayout(size, 1)); // one row per row
 
         for (int r = 0; r < size; r++) {
+
+            JPanel rowPanel = new JPanel();
+            rowPanel.setLayout(new BoxLayout(rowPanel, BoxLayout.X_AXIS));
+            rowPanel.setOpaque(false);
+
+            rowPanel.add(Box.createHorizontalGlue());
+
             for (int c = 0; c < size; c++) {
                 int state = model.getCellState(r, c);
-                CellButton btn = new CellButton(r, c, state, this);
-                cells[r][c] = btn;
-                add(btn);
+
+                if (state != SolitaireModel.INVALID) {
+                    CellButton btn = new CellButton(r, c, state, this);
+                    cells[r][c] = btn;
+                    rowPanel.add(btn);
+                } else {
+                    cells[r][c] = null;
+                }
             }
+
+            rowPanel.add(Box.createHorizontalGlue());
+
+            add(rowPanel);
         }
 
         revalidate();
@@ -62,15 +79,17 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
     }
 
     // Refresh / selection
-
-    /** Pull the latest state from the model into every CellButton. */
     public void refresh() {
         if (model == null || cells == null) return;
+
         int size = model.getBoardSize();
+
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
-                cells[r][c].setCellState(model.getCellState(r, c));
-                cells[r][c].setSelected(r == selectedRow && c == selectedCol);
+                if (cells[r][c] != null) {
+                    cells[r][c].setCellState(model.getCellState(r, c));
+                    cells[r][c].setSelected(r == selectedRow && c == selectedCol);
+                }
             }
         }
     }

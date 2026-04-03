@@ -49,6 +49,13 @@ public class CellButton extends JPanel {
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        setBackground(new Color(0xFAF3E0));
+        setOpaque(true);
+
+        setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
+        setMinimumSize(new Dimension(CELL_SIZE, CELL_SIZE));
+        setMaximumSize(new Dimension(CELL_SIZE, CELL_SIZE));
+
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -70,45 +77,33 @@ public class CellButton extends JPanel {
         repaint();
     }
 
-    // Painting
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+
         if (cellState == SolitaireModel.INVALID) return;
 
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int cx = CELL_SIZE / 2;
-        int cy = CELL_SIZE / 2;
+        int padding = 6;
+        int diameter = Math.min(getWidth(), getHeight()) - 2 * padding;
+
+        int x = (getWidth() - diameter) / 2;
+        int y = (getHeight() - diameter) / 2;
 
         // Empty socket
         g2.setColor(EMPTY_COLOR);
-        g2.fillOval(cx - PEG_RADIUS, cy - PEG_RADIUS, PEG_RADIUS * 2, PEG_RADIUS * 2);
+        g2.fillOval(x, y, diameter, diameter);
+
         g2.setColor(SOCKET_BORDER);
         g2.setStroke(new BasicStroke(1.5f));
-        g2.drawOval(cx - PEG_RADIUS, cy - PEG_RADIUS, PEG_RADIUS * 2, PEG_RADIUS * 2);
+        g2.drawOval(x, y, diameter, diameter);
 
+        // Peg
         if (cellState == SolitaireModel.PEG) {
-            // Drop shadow
-            g2.setColor(new Color(0, 0, 0, 40));
-            g2.fillOval(cx - PEG_RADIUS + 3, cy - PEG_RADIUS + 4, PEG_RADIUS * 2, PEG_RADIUS * 2);
-
-            // Peg body
             g2.setColor(selected ? PEG_SELECTED : PEG_COLOR);
-            g2.fillOval(cx - PEG_RADIUS, cy - PEG_RADIUS, PEG_RADIUS * 2, PEG_RADIUS * 2);
-
-            // Shine highlight
-            g2.setColor(new Color(255, 255, 255, 60));
-            g2.fillOval(cx - PEG_RADIUS + 4, cy - PEG_RADIUS + 4, PEG_RADIUS - 4, PEG_RADIUS - 4);
-
-            // Selection ring
-            if (selected) {
-                g2.setColor(PEG_SELECTED);
-                g2.setStroke(new BasicStroke(2.5f));
-                g2.drawOval(cx - PEG_RADIUS - 3, cy - PEG_RADIUS - 3,
-                        PEG_RADIUS * 2 + 6, PEG_RADIUS * 2 + 6);
-            }
+            g2.fillOval(x, y, diameter, diameter);
         }
 
         g2.dispose();

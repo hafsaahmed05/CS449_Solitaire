@@ -4,16 +4,12 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * HomePanel displays the welcome screen shown when the program first starts.
+ * HomePanel — welcome screen with working board-type and size selectors.
  *
- * It shows a short welcome message and the default game settings
- * (English board, 7x7 size). These options are displayed for the user
- * but are not selectable in this version of the program.
- *
- * The panel also includes a "Start Game" button that notifies the
- * controller when the user is ready to begin the game.
+ * Exposes:
+ *   getSelectedType() — "English" / "Hexagon" / "Diamond"
+ *   getSelectedSize() — integer from the spinner
  */
-
 public class HomePanel extends JPanel {
 
     private static final Color BG_COLOR   = new Color(0xFAF3E0);
@@ -22,6 +18,12 @@ public class HomePanel extends JPanel {
     public interface StartListener {
         void onStartGame();
     }
+
+    // Keep refs so the view can read them
+    private final JRadioButton      englishBtn;
+    private final JRadioButton      hexagonBtn;
+    private final JRadioButton      diamondBtn;
+    private final SpinnerNumberModel spinnerModel;
 
     public HomePanel(StartListener listener) {
 
@@ -45,25 +47,15 @@ public class HomePanel extends JPanel {
         typeLabel.setForeground(TEXT_COLOR);
         typeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JRadioButton englishBtn  = new JRadioButton("English");
-        JRadioButton hexagonBtn  = new JRadioButton("Hexagon");
-        JRadioButton diamondBtn  = new JRadioButton("Diamond");
+        englishBtn = makeRadio("English");
+        hexagonBtn = makeRadio("Hexagon");
+        diamondBtn = makeRadio("Diamond");
+        englishBtn.setSelected(true);   // default
 
-        // Style each radio button
-        for (JRadioButton btn : new JRadioButton[]{englishBtn, hexagonBtn, diamondBtn}) {
-            btn.setFont(new Font("Georgia", Font.PLAIN, 14));
-            btn.setForeground(TEXT_COLOR);
-            btn.setBackground(BG_COLOR);
-            btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-            btn.setEnabled(false); // not selectable yet
-        }
-
-        // Default: English selected
         ButtonGroup typeGroup = new ButtonGroup();
         typeGroup.add(englishBtn);
         typeGroup.add(hexagonBtn);
         typeGroup.add(diamondBtn);
-        englishBtn.setSelected(true);
 
         JPanel typePanel = new JPanel();
         typePanel.setLayout(new BoxLayout(typePanel, BoxLayout.Y_AXIS));
@@ -79,10 +71,10 @@ public class HomePanel extends JPanel {
         sizeLabel.setForeground(TEXT_COLOR);
         sizeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(7, 5, 15, 2);
+        // min 5, max 13, step 2 (only odd sizes work cleanly)
+        spinnerModel = new SpinnerNumberModel(7, 5, 13, 2);
         JSpinner sizeSpinner = new JSpinner(spinnerModel);
         sizeSpinner.setFont(new Font("Georgia", Font.PLAIN, 14));
-        sizeSpinner.setEnabled(false); // not selectable yet
         sizeSpinner.setMaximumSize(new Dimension(80, 30));
         sizeSpinner.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -113,5 +105,32 @@ public class HomePanel extends JPanel {
         add(Box.createRigidArea(new Dimension(0, 28)));
         add(startButton);
         add(Box.createVerticalGlue());
+    }
+
+    // ------------------------------------------------------------------
+    // Accessors (read by SolitaireView, passed to controller)
+    // ------------------------------------------------------------------
+
+    public String getSelectedType() {
+        if (hexagonBtn.isSelected()) return "Hexagon";
+        if (diamondBtn.isSelected()) return "Diamond";
+        return "English";
+    }
+
+    public int getSelectedSize() {
+        return spinnerModel.getNumber().intValue();
+    }
+
+    // ------------------------------------------------------------------
+    // Helper
+    // ------------------------------------------------------------------
+
+    private JRadioButton makeRadio(String text) {
+        JRadioButton btn = new JRadioButton(text);
+        btn.setFont(new Font("Georgia", Font.PLAIN, 14));
+        btn.setForeground(TEXT_COLOR);
+        btn.setBackground(BG_COLOR);
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return btn;
     }
 }
