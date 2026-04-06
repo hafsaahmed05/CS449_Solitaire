@@ -116,22 +116,16 @@ public abstract class SolitaireModel {
 
     public boolean makeAnyMove() {
         int g = getGridSize();
-
         for (int r = 0; r < g; r++) {
             for (int c = 0; c < g; c++) {
-
                 if (board[r][c] == PEG) {
-
-                    // try all 4 directions
-                    if (makeMove(r, c, r, c + 2)) return true;
-                    if (makeMove(r, c, r, c - 2)) return true;
-                    if (makeMove(r, c, r + 2, c)) return true;
-                    if (makeMove(r, c, r - 2, c)) return true;
+                    for (int[] d : getDirections()) {  // FIXED
+                        if (makeMove(r, c, r + 2*d[0], c + 2*d[1])) return true;
+                    }
                 }
             }
         }
-
-        return false; // no moves left
+        return false;
     }
 
     // ------------------------------------------------------------------
@@ -177,7 +171,7 @@ public abstract class SolitaireModel {
         for (int r = 0; r < g; r++) {
             for (int c = 0; c < g; c++) {
                 if (board[r][c] == PEG) {
-                    for (int[] d : DIRECTIONS) {
+                    for (int[] d : getDirections()) {  // FIXED
                         if (isLegalMove(r, c, r + 2*d[0], c + 2*d[1])) return false;
                     }
                 }

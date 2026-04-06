@@ -46,8 +46,9 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
 
         int size = model.getBoardSize();
         cells = new CellButton[size][size];
+        boolean isHex = model instanceof HexagonModel;
 
-        setLayout(new GridLayout(size, 1)); // one row per row
+        setLayout(new GridLayout(size, 1));
 
         for (int r = 0; r < size; r++) {
 
@@ -55,11 +56,15 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
             rowPanel.setLayout(new BoxLayout(rowPanel, BoxLayout.X_AXIS));
             rowPanel.setOpaque(false);
 
+            // For hexagon, offset alternate rows by half a cell width
+            if (isHex && r % 2 != 0) {
+                rowPanel.add(Box.createHorizontalStrut(CellButton.CELL_SIZE / 2));
+            }
+
             rowPanel.add(Box.createHorizontalGlue());
 
             for (int c = 0; c < size; c++) {
                 int state = model.getCellState(r, c);
-
                 if (state != SolitaireModel.INVALID) {
                     CellButton btn = new CellButton(r, c, state, this);
                     cells[r][c] = btn;
@@ -70,7 +75,6 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
             }
 
             rowPanel.add(Box.createHorizontalGlue());
-
             add(rowPanel);
         }
 
