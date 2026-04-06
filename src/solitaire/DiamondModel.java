@@ -1,8 +1,7 @@
 package solitaire;
 
 /**
- * DiamondModel — symmetric diamond with row widths:
- * 1,3,5,...,size,...,5,3,1
+ * DiamondModel — symmetric diamond with row widths
  *
  * Example size = 7:
  *   1
