@@ -17,13 +17,7 @@ public abstract class SolitaireModel {
     public static final int EMPTY   =  0;
     public static final int PEG     =  1;
 
-    // Still needed by SolitaireView / BoardPanel for sizing the English board.
-    // Each subclass exposes its own grid size via getGridSize().
     public static final int SIZE_CONST = 7;
-
-    private static final int[][] DIRECTIONS = {
-            {-1,  0}, { 1,  0}, { 0, -1}, { 0,  1}
-    };
 
     protected int[][] board;
     protected int pegsRemaining;
@@ -32,26 +26,20 @@ public abstract class SolitaireModel {
     // Abstract contract
     // ------------------------------------------------------------------
 
-    /** Side length of the square backing array (may be larger than "size"). */
     public abstract int getGridSize();
-
-    /** True when (row, col) is a playable cell for this board shape. */
     public abstract boolean isValidCell(int row, int col);
-
-    /** Row index of the cell that starts empty. */
     protected abstract int getCentreRow();
-
-    /** Column index of the cell that starts empty. */
     protected abstract int getCentreCol();
 
     protected int[][] getDirections() {
         return new int[][] {
-                {-1, 0}, {1, 0},   // vertical
-                {0, -1}, {0, 1}    // horizontal
+                {-1, 0}, {1, 0},
+                {0, -1}, {0, 1}
         };
     }
+
     // ------------------------------------------------------------------
-    // Initialisation  (shared)
+    // Initialisation
     // ------------------------------------------------------------------
 
     public void initBoard() {
@@ -75,7 +63,7 @@ public abstract class SolitaireModel {
     }
 
     // ------------------------------------------------------------------
-    // Move logic  (shared)
+    // Move logic
     // ------------------------------------------------------------------
 
     public boolean makeMove(int fromRow, int fromCol, int toRow, int toCol) {
@@ -92,16 +80,13 @@ public abstract class SolitaireModel {
     }
 
     public boolean isLegalMove(int r1, int c1, int r2, int c2) {
-
         if (!isValidCell(r1, c1) || !isValidCell(r2, c2)) return false;
-        if (getCellState(r1, c1) != PEG) return false;
+        if (getCellState(r1, c1) != PEG)   return false;
         if (getCellState(r2, c2) != EMPTY) return false;
 
         for (int[] d : getDirections()) {
-
-            int midR = r1 + d[0];
-            int midC = c1 + d[1];
-
+            int midR  = r1 + d[0];
+            int midC  = c1 + d[1];
             int destR = r1 + 2 * d[0];
             int destC = c1 + 2 * d[1];
 
@@ -110,7 +95,6 @@ public abstract class SolitaireModel {
                         && getCellState(midR, midC) == PEG;
             }
         }
-
         return false;
     }
 
@@ -119,7 +103,7 @@ public abstract class SolitaireModel {
         for (int r = 0; r < g; r++) {
             for (int c = 0; c < g; c++) {
                 if (board[r][c] == PEG) {
-                    for (int[] d : getDirections()) {  // FIXED
+                    for (int[] d : getDirections()) {
                         if (makeMove(r, c, r + 2*d[0], c + 2*d[1])) return true;
                     }
                 }
@@ -128,42 +112,58 @@ public abstract class SolitaireModel {
         return false;
     }
 
+    /**
+     * Sprint 4: Returns {fromRow, fromCol, toRow, toCol} of the next valid
+     * move WITHOUT applying it, so the controller can record it before
+     * calling makeAnyMove(). Returns null if no move exists.
+     */
+    public int[] getNextMove() {
+        int g = getGridSize();
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
+                if (board[r][c] == PEG) {
+                    for (int[] d : getDirections()) {
+                        int toR = r + 2 * d[0];
+                        int toC = c + 2 * d[1];
+                        if (isLegalMove(r, c, toR, toC)) {
+                            return new int[]{r, c, toR, toC};
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     // ------------------------------------------------------------------
     // Randomize Board
     // ------------------------------------------------------------------
+
     public void randomizeBoard() {
         java.util.Random rand = new java.util.Random();
-
         int g = getGridSize();
         pegsRemaining = 0;
 
         for (int r = 0; r < g; r++) {
             for (int c = 0; c < g; c++) {
-
                 if (isValidCell(r, c)) {
                     board[r][c] = rand.nextBoolean() ? PEG : EMPTY;
-
-                    if (board[r][c] == PEG) {
-                        pegsRemaining++;
-                    }
+                    if (board[r][c] == PEG) pegsRemaining++;
                 } else {
                     board[r][c] = INVALID;
                 }
             }
         }
 
-        // Ensure at least one empty space (so moves are possible)
-        int centerR = getCentreRow();
-        int centerC = getCentreCol();
-
-        if (board[centerR][centerC] == PEG) {
-            board[centerR][centerC] = EMPTY;
+        // Ensure at least one empty space
+        if (board[getCentreRow()][getCentreCol()] == PEG) {
+            board[getCentreRow()][getCentreCol()] = EMPTY;
             pegsRemaining--;
         }
     }
 
     // ------------------------------------------------------------------
-    // Game-over detection  (shared)
+    // Game-over detection
     // ------------------------------------------------------------------
 
     public boolean isGameOver() {
@@ -171,7 +171,7 @@ public abstract class SolitaireModel {
         for (int r = 0; r < g; r++) {
             for (int c = 0; c < g; c++) {
                 if (board[r][c] == PEG) {
-                    for (int[] d : getDirections()) {  // FIXED
+                    for (int[] d : getDirections()) {
                         if (isLegalMove(r, c, r + 2*d[0], c + 2*d[1])) return false;
                     }
                 }
@@ -188,14 +188,21 @@ public abstract class SolitaireModel {
 
     public int getCellState(int row, int col) { return board[row][col]; }
     public int getPegsRemaining()             { return pegsRemaining; }
-
-    /** Convenience alias so old code calling getBoardSize() still works. */
-    public int getBoardSize() { return getGridSize(); }
+    public int getBoardSize()                 { return getGridSize(); }
 
     // ------------------------------------------------------------------
-    // Test helpers  (package-private)
+    // Board state — 2D (existing, used by tests)
     // ------------------------------------------------------------------
 
+    /** Returns a full deep copy of the board as a 2D array. */
+    public int[][] getBoardCopy() {
+        int g = getGridSize();
+        int[][] copy = new int[g][g];
+        for (int r = 0; r < g; r++) System.arraycopy(board[r], 0, copy[r], 0, g);
+        return copy;
+    }
+
+    /** Set board from a 2D array (used by tests). */
     void setBoardState(int[][] newBoard) {
         int g = getGridSize();
         pegsRemaining = 0;
@@ -207,10 +214,37 @@ public abstract class SolitaireModel {
         }
     }
 
-    public int[][] getBoardCopy() {
+    // ------------------------------------------------------------------
+    // Board state — flattened 1D (used by GameRecorder)
+    // ------------------------------------------------------------------
+
+    /**
+     * Returns the board as a flat int[] (row by row).
+     * e.g. a 7x7 board → int[49]
+     */
+    public int[] getBoardState() {
         int g = getGridSize();
-        int[][] copy = new int[g][g];
-        for (int r = 0; r < g; r++) System.arraycopy(board[r], 0, copy[r], 0, g);
-        return copy;
+        int[] flat = new int[g * g];
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
+                flat[r * g + c] = board[r][c];
+            }
+        }
+        return flat;
+    }
+
+    /**
+     * Restores the board from a flat int[] produced by getBoardState().
+     * Used by the controller during replay.
+     */
+    public void setBoardState(int[] flat) {
+        int g = getGridSize();
+        pegsRemaining = 0;
+        for (int r = 0; r < g; r++) {
+            for (int c = 0; c < g; c++) {
+                board[r][c] = flat[r * g + c];
+                if (board[r][c] == PEG) pegsRemaining++;
+            }
+        }
     }
 }

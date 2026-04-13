@@ -34,11 +34,15 @@ public class SolitaireView extends JFrame {
     private JButton randomizeButton;
     private JButton autoplayButton;
 
+    private JCheckBox recordGameCheckbox;
+    private JButton replayButton;
+
     /** Listener for high-level UI events (implemented by SolitaireController). */
     public interface ViewListener {
         void onNewGame();
         void onRandomize();
         void onAutoplay();
+        void onReplay();
     }
 
     private ViewListener viewListener;
@@ -117,6 +121,26 @@ public class SolitaireView extends JFrame {
             }
         });
 
+        recordGameCheckbox = new JCheckBox("Record game");
+        recordGameCheckbox.setFont(new Font("Georgia", Font.PLAIN, 13));
+        recordGameCheckbox.setBackground(BOARD_COLOR);
+        recordGameCheckbox.setForeground(Color.WHITE);
+        recordGameCheckbox.setFocusPainted(false);
+
+        replayButton = new JButton("Replay");
+        replayButton.setFont(new Font("Georgia", Font.BOLD, 13));
+        replayButton.setBackground(new Color(0x9B59B6));
+        replayButton.setForeground(Color.WHITE);
+        replayButton.setFocusPainted(false);
+        replayButton.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+        replayButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        replayButton.addActionListener(e -> {
+            if (viewListener != null) viewListener.onReplay();
+        });
+
+        recordGameCheckbox.setVisible(false);
+        replayButton.setVisible(false);
+
         randomizeButton.setVisible(false);
         autoplayButton.setVisible(false);
 
@@ -126,6 +150,8 @@ public class SolitaireView extends JFrame {
         topBar.add(newGameButton);
         topBar.add(autoplayButton);
         topBar.add(randomizeButton);
+        topBar.add(replayButton);
+        topBar.add(recordGameCheckbox);
         add(topBar, BorderLayout.NORTH);
 
         // Panels that switch between HOME and GAME
@@ -200,6 +226,9 @@ public class SolitaireView extends JFrame {
         randomizeButton.setVisible(true);
         autoplayButton.setVisible(true);
 
+        replayButton.setVisible(true);
+        recordGameCheckbox.setVisible(true);
+
         pack();
         setLocationRelativeTo(null);
         revalidate();
@@ -213,10 +242,17 @@ public class SolitaireView extends JFrame {
         randomizeButton.setVisible(false);
         autoplayButton.setVisible(false);
 
+        replayButton.setVisible(false);
+        recordGameCheckbox.setVisible(false);
+
         pack();
         setLocationRelativeTo(null);
         revalidate();
         repaint();
+    }
+
+    public boolean isRecordingEnabled() {
+        return recordGameCheckbox.isSelected();
     }
 
     private boolean isGameShowing() { return gameShowing;}
@@ -230,5 +266,4 @@ public class SolitaireView extends JFrame {
                 won ? "Congratulations!" : "Game Over",
                 won ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
     }
-
 }
