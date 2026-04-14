@@ -1,4 +1,6 @@
-package solitaire;
+package main.solitaire.model;
+
+import main.solitaire.model.*;
 
 /**
  * DiamondModel — symmetric diamond with row widths

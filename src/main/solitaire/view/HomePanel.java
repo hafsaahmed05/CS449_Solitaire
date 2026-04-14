@@ -1,5 +1,4 @@
-package solitaire;
-
+package main.solitaire.view;
 import javax.swing.*;
 import java.awt.*;
 

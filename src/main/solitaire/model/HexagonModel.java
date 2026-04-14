@@ -1,5 +1,6 @@
-package solitaire;
+package main.solitaire.model;
 
+import main.solitaire.model.*;
 /**
  * Hexagon-shaped Peg Solitaire board.
  * Rows expand to the center, then contract symmetrically.

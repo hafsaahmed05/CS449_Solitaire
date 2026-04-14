@@ -1,8 +1,12 @@
-package solitaire;
+package main.solitaire.controller;
 
 import javax.swing.*;
 import java.io.IOException;
 import java.util.List;
+
+import main.solitaire.model.*;
+import main.solitaire.view.*;
+import main.solitaire.recorder.*;
 
 /**
  * SolitaireController — wires SolitaireModel and SolitaireView (MVC).

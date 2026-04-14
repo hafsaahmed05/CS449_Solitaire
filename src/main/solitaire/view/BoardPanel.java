@@ -1,7 +1,10 @@
-package solitaire;
+package main.solitaire.view;
 
 import javax.swing.*;
 import java.awt.*;
+
+import main.solitaire.model.*;
+import main.solitaire.view.*;
 
 /**
  * BoardPanel is a JPanel that displays the game board using a grid of CellButtons:

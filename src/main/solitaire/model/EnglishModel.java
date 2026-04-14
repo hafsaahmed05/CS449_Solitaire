@@ -1,4 +1,6 @@
-package solitaire;
+package main.solitaire.model;
+
+import main.solitaire.model.*;
 
 /**
  * EnglishModel — the classic cross-shaped English Peg Solitaire board.

@@ -1,5 +1,4 @@
-package solitaire;
-
+package main.solitaire.model;
 /**
  * SolitaireModel — abstract base class for all board types.
  *
@@ -203,7 +202,7 @@ public abstract class SolitaireModel {
     }
 
     /** Set board from a 2D array (used by tests). */
-    void setBoardState(int[][] newBoard) {
+    public void setBoardState(int[][] newBoard) {
         int g = getGridSize();
         pegsRemaining = 0;
         for (int r = 0; r < g; r++) {

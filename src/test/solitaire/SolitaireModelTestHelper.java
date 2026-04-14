@@ -1,4 +1,9 @@
-package solitaire;
+package test.solitaire;
+
+import main.solitaire.model.SolitaireModel;
+import main.solitaire.model.EnglishModel;
+import main.solitaire.model.HexagonModel;
+import main.solitaire.model.DiamondModel;
 
 /**
  * SolitaireModelTestHelper — builds special board states for unit tests.

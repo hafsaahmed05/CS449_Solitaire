@@ -1,4 +1,4 @@
-package solitaire;
+package main.solitaire.view;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -9,8 +9,9 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
 import javax.swing.JPanel;
+
+import main.solitaire.model.SolitaireModel;
 
 /**
  * CellButton represents one clickable cell on the Solitaire board.

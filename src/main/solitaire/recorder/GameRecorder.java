@@ -1,5 +1,4 @@
-package solitaire;
-
+package main.solitaire.recorder;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;

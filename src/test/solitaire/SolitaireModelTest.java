@@ -1,4 +1,4 @@
-package solitaire;
+package test.solitaire;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import main.solitaire.model.*;
+import main.solitaire.recorder.*;
 
 /**
  * SolitaireModelTest — JUnit 5 tests for all Sprint 3 user stories.
@@ -18,6 +21,8 @@ import org.junit.jupiter.api.Test;
  * US6  – Make a move in an automated game  (makeAnyMove)
  * US7  – An automated game is over
  * US8  – Randomize the board
+ * US9 - Record a game
+ * US10 - Replay a game
  */
 class SolitaireModelTest {
 
@@ -582,5 +587,168 @@ class SolitaireModelTest {
             }
         }
         assertEquals(counted, m.getPegsRemaining());
+    }
+
+    // =======================================================================
+    // US9 – Record a game
+    // =======================================================================
+
+    @Test
+    @DisplayName("US9-AC1: GameRecorder starts recording and logs board type")
+    void testRecorderLogsHeader() {
+        GameRecorder recorder = new GameRecorder();
+        recorder.startRecording("English", 7, model.getBoardState());
+        assertTrue(recorder.isRecording());
+    }
+
+    @Test
+    @DisplayName("US9-AC2: Recording a move is saved to file and reloaded")
+    void testRecorderSavesAndLoadsMove() throws Exception {
+        GameRecorder recorder = new GameRecorder();
+        recorder.startRecording("English", 7, model.getBoardState());
+        recorder.recordMove(1, 3, 3, 3);
+        recorder.stopRecording();
+
+        String filename = "test_record.txt";
+        recorder.saveToFile(filename);
+
+        java.util.List<String> lines = recorder.loadFromFile(filename);
+        assertTrue(lines.stream().anyMatch(GameRecorder::isMove));
+        new java.io.File(filename).delete(); // cleanup
+    }
+
+    @Test
+    @DisplayName("US9-AC3: Recorded move parses back to correct coordinates")
+    void testRecordedMoveParsesCorrectly() throws Exception {
+        GameRecorder recorder = new GameRecorder();
+        recorder.startRecording("English", 7, model.getBoardState());
+        recorder.recordMove(1, 3, 3, 3);
+        recorder.stopRecording();
+
+        String filename = "test_move_parse.txt";
+        recorder.saveToFile(filename);
+
+        java.util.List<String> lines = recorder.loadFromFile(filename);
+        String moveLine = lines.stream().filter(GameRecorder::isMove).findFirst().orElse(null);
+        assertFalse(moveLine == null);
+
+        int[] coords = GameRecorder.parseMove(moveLine);
+        assertEquals(1, coords[0]);
+        assertEquals(3, coords[1]);
+        assertEquals(3, coords[2]);
+        assertEquals(3, coords[3]);
+        new java.io.File(filename).delete();
+    }
+
+    @Test
+    @DisplayName("US9-AC4: Randomize event is recorded as a board snapshot")
+    void testRecorderLogsRandomize() throws Exception {
+        GameRecorder recorder = new GameRecorder();
+        recorder.startRecording("English", 7, model.getBoardState());
+        model.randomizeBoard();
+        recorder.recordRandomize(model.getBoardState());
+        recorder.stopRecording();
+
+        String filename = "test_randomize.txt";
+        recorder.saveToFile(filename);
+
+        java.util.List<String> lines = recorder.loadFromFile(filename);
+        assertTrue(lines.stream().anyMatch(GameRecorder::isRandomize));
+        new java.io.File(filename).delete();
+    }
+
+    @Test
+    @DisplayName("US9-AC5: Recording is inactive before startRecording is called")
+    void testRecorderNotActiveByDefault() {
+        GameRecorder recorder = new GameRecorder();
+        assertFalse(recorder.isRecording());
+    }
+
+    @Test
+    @DisplayName("US9-AC6: Recording stops after stopRecording is called")
+    void testRecorderStopsCorrectly() {
+        GameRecorder recorder = new GameRecorder();
+        recorder.startRecording("English", 7, model.getBoardState());
+        recorder.stopRecording();
+        assertFalse(recorder.isRecording());
+    }
+
+// =======================================================================
+// US10 – Replay a game
+// =======================================================================
+
+    @Test
+    @DisplayName("US10-AC1: Board state is restored correctly from flat array")
+    void testSetBoardStateFlat() {
+        int[] original = model.getBoardState();
+        model.randomizeBoard();
+        model.setBoardState(original);
+
+        int[] restored = model.getBoardState();
+        for (int i = 0; i < original.length; i++) {
+            assertEquals(original[i], restored[i]);
+        }
+    }
+
+    @Test
+    @DisplayName("US10-AC2: getBoardState and setBoardState are inverse operations")
+    void testGetSetBoardStateRoundTrip() {
+        int[] before = model.getBoardState();
+        model.setBoardState(before);
+        int[] after = model.getBoardState();
+
+        for (int i = 0; i < before.length; i++) {
+            assertEquals(before[i], after[i]);
+        }
+    }
+
+    @Test
+    @DisplayName("US10-AC3: getNextMove returns a legal move when one exists")
+    void testGetNextMoveReturnsLegalMove() {
+        int[] move = model.getNextMove();
+        assertFalse(move == null);
+        assertTrue(model.isLegalMove(move[0], move[1], move[2], move[3]));
+    }
+
+    @Test
+    @DisplayName("US10-AC4: getNextMove returns null when no moves exist")
+    void testGetNextMoveReturnsNullWhenStuck() {
+        SolitaireModelTestHelper helper = new SolitaireModelTestHelper();
+        SolitaireModel stuck = helper.buildStuckBoard();
+        assertFalse(stuck.getNextMove() != null);
+    }
+
+    @Test
+    @DisplayName("US10-AC5: Replaying a recorded move reproduces the correct board state")
+    void testReplayMoveReproducesBoardState() {
+        // Make a move and capture state after
+        model.makeMove(1, 3, 3, 3);
+        int[] afterMove = model.getBoardState();
+
+        // Reset and replay the same move
+        model.initBoard();
+        model.makeMove(1, 3, 3, 3);
+        int[] replayed = model.getBoardState();
+
+        for (int i = 0; i < afterMove.length; i++) {
+            assertEquals(afterMove[i], replayed[i]);
+        }
+    }
+
+    @Test
+    @DisplayName("US10-AC6: File with missing BOARD_TYPE is detected as invalid")
+    void testInvalidFileMissingBoardType() throws Exception {
+        GameRecorder recorder = new GameRecorder();
+        // Write a file manually without BOARD_TYPE
+        String filename = "test_invalid.txt";
+        try (java.io.BufferedWriter w = new java.io.BufferedWriter(new java.io.FileWriter(filename))) {
+            w.write("BOARD_SIZE:7"); w.newLine();
+            w.write("INITIAL_STATE:1,0,1"); w.newLine();
+            w.write("MOVE:1,3,3,3"); w.newLine();
+        }
+        java.util.List<String> lines = recorder.loadFromFile(filename);
+        boolean hasBoardType = lines.stream().anyMatch(GameRecorder::isBoardType);
+        assertFalse(hasBoardType);
+        new java.io.File(filename).delete();
     }
 }

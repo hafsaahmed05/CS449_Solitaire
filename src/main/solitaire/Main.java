@@ -1,6 +1,9 @@
-package solitaire;
+package main.solitaire;
 
 import javax.swing.SwingUtilities;
+
+import main.solitaire.view.*;
+import main.solitaire.controller.*;
 
 /**
  * Main — application entry point.
