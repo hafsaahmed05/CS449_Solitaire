@@ -118,21 +118,15 @@ public class SolitaireController
 
             if (moved) {
                 recorder.recordMove(selectedRow, selectedCol, row, col);
-
                 clearSelection();
                 syncView();
 
                 if (model.isWon()) {
-                    if (model.isWon()) {
-                        saveRecordingIfEnabled();
-                        view.showGameOver(true);
-                    } else if (model.isGameOver()) {
-                        saveRecordingIfEnabled();
-                        view.showGameOver(false);
-                    }
-                } else {
-                    clearSelection();
-                    view.setStatus("Illegal move — select a peg and jump over an adjacent peg.");
+                    saveRecordingIfEnabled();
+                    view.showGameOver(true);
+                } else if (model.isGameOver()) {
+                    saveRecordingIfEnabled();
+                    view.showGameOver(false);
                 }
             }
         }
