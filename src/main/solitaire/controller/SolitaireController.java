@@ -12,12 +12,11 @@ import main.solitaire.recorder.*;
  * SolitaireController — wires SolitaireModel and SolitaireView (MVC).
  *
  * Implements:
- *   - SolitaireView.ViewListener   (New Game / Home events)
+ *   - SolitaireView.ViewListener   (New Game / Home / Record events)
  *   - CellButton.CellClickListener (cell clicks from BoardPanel)
  *
- * When a new game is requested the controller asks the view which board
- * type and size the user selected, constructs the correct model subclass,
- * and hands it to the view.
+ * Sprint 4 decoupling: file chooser dialogs moved to SolitaireView,
+ * so the controller only handles game logic and coordination.
  */
 public class SolitaireController
         implements SolitaireView.ViewListener,
@@ -40,7 +39,6 @@ public class SolitaireController
         view.setViewListener(this);
         view.setCellClickListener(this);
 
-        // Start with default English 7
         this.model = new EnglishModel(7);
         view.setModel(model);
         syncView();
@@ -60,6 +58,26 @@ public class SolitaireController
         view.setModel(model);
         syncView();
         view.setStatus("New game started. Select a peg to move.");
+    }
+
+    @Override
+    public void onStartRecording() {
+        recorder.startRecording(
+                view.getSelectedBoardType(),
+                view.getSelectedBoardSize(),
+                model.getBoardState()
+        );
+        view.setStatus("Recording enabled.");
+    }
+
+    @Override
+    public void onStopRecording() {
+        saveRecordingIfEnabled();
+    }
+
+    @Override
+    public void onGoHome() {
+        saveRecordingIfEnabled();
     }
 
     private SolitaireModel buildModel(String type, int size) {
@@ -127,6 +145,10 @@ public class SolitaireController
         }
     }
 
+    // ------------------------------------------------------------------
+    // Autoplay
+    // ------------------------------------------------------------------
+
     @Override
     public void onAutoplay() {
         if (view.isRecordingEnabled()) {
@@ -140,7 +162,6 @@ public class SolitaireController
         new Thread(() -> {
             while (!model.isGameOver()) {
                 int[] moveCoords = model.getNextMove();
-
                 if (moveCoords == null) break;
 
                 boolean moved = model.makeAnyMove();
@@ -148,24 +169,26 @@ public class SolitaireController
 
                 recorder.recordMove(moveCoords[0], moveCoords[1], moveCoords[2], moveCoords[3]);
 
-                try {
-                    Thread.sleep(300);
-                } catch (InterruptedException ignored) {}
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
 
                 SwingUtilities.invokeLater(this::syncView);
             }
 
             SwingUtilities.invokeLater(() -> {
-                saveRecordingIfEnabled();
                 if (model.isWon()) {
                     view.showGameOver(true);
                 } else {
                     view.showGameOver(false);
                 }
+                saveRecordingIfEnabled();
             });
 
         }).start();
     }
+
+    // ------------------------------------------------------------------
+    // Randomize
+    // ------------------------------------------------------------------
 
     @Override
     public void onRandomize() {
@@ -176,16 +199,15 @@ public class SolitaireController
         view.setStatus("Board randomized!");
     }
 
+    // ------------------------------------------------------------------
+    // Replay
+    // ------------------------------------------------------------------
+
     @Override
     public void onReplay() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Select a recorded game file");
-        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text files (*.txt)", "txt"));
-
-        int result = fileChooser.showOpenDialog(null);
-        if (result != JFileChooser.APPROVE_OPTION) return;
-
-        String filename = fileChooser.getSelectedFile().getAbsolutePath();
+        // View handles the dialog — controller only handles logic
+        String filename = view.showOpenDialog();
+        if (filename == null) return;
 
         List<String> lines;
         try {
@@ -236,9 +258,9 @@ public class SolitaireController
         }
 
         // Parse header
-        String boardType = "English";
-        int boardSize = 7;
-        int[] initialState = null;
+        String boardType   = "English";
+        int    boardSize   = 7;
+        int[]  initialState = null;
 
         for (String line : lines) {
             if (GameRecorder.isBoardType(line))    boardType    = GameRecorder.parseBoardType(line);
@@ -260,44 +282,18 @@ public class SolitaireController
                 if (GameRecorder.isMove(line)) {
                     int[] m = GameRecorder.parseMove(line);
                     model.makeMove(m[0], m[1], m[2], m[3]);
-
                     try { Thread.sleep(400); } catch (InterruptedException ignored) {}
-
                     SwingUtilities.invokeLater(this::syncView);
 
                 } else if (GameRecorder.isRandomize(line)) {
                     int[] state = GameRecorder.parseBoardState(line);
                     model.setBoardState(state);
-
                     try { Thread.sleep(400); } catch (InterruptedException ignored) {}
-
                     SwingUtilities.invokeLater(this::syncView);
                 }
             }
-
             SwingUtilities.invokeLater(() -> view.setStatus("Replay finished."));
-
         }).start();
-    }
-
-    @Override
-    public void onGoHome() {
-        saveRecordingIfEnabled();
-    }
-
-    @Override
-    public void onStartRecording() {
-        recorder.startRecording(
-                view.getSelectedBoardType(),
-                view.getSelectedBoardSize(),
-                model.getBoardState()
-        );
-        view.setStatus("Recording enabled.");
-    }
-
-    @Override
-    public void onStopRecording() {
-        saveRecordingIfEnabled();
     }
 
     // ------------------------------------------------------------------
@@ -308,21 +304,15 @@ public class SolitaireController
         if (!recorder.isRecording()) return;
         recorder.stopRecording();
 
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Save recorded game as...");
-        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text files (*.txt)", "txt"));
+        // View handles the dialog — controller only handles the save logic
+        String filename = view.showSaveDialog();
+        if (filename == null) return;
 
-        int result = fileChooser.showSaveDialog(null);
-
-        if (result == JFileChooser.APPROVE_OPTION) {
-            String filename = fileChooser.getSelectedFile().getAbsolutePath();
-            if (!filename.endsWith(".txt")) filename += ".txt";
-            try {
-                recorder.saveToFile(filename);
-                view.setStatus("Game saved to: " + filename);
-            } catch (IOException e) {
-                view.setStatus("Error saving file: " + e.getMessage());
-            }
+        try {
+            recorder.saveToFile(filename);
+            view.setStatus("Game saved to: " + filename);
+        } catch (IOException e) {
+            view.setStatus("Error saving file: " + e.getMessage());
         }
     }
 

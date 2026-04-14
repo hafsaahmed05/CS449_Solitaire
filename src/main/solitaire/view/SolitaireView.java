@@ -1,21 +1,22 @@
 package main.solitaire.view;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 
 import main.solitaire.model.*;
-import main.solitaire.view.*;
 
 /**
  * SolitaireView represents the main window of the application.
  * It creates the toolbar, board panel, and status bar, and
  * provides methods the controller uses to update the UI.
- **/
-
+ *
+ * Sprint 4 decoupling: file chooser dialogs moved here from controller,
+ * keeping all UI concerns in the view layer.
+ */
 public class SolitaireView extends JFrame {
 
     private static final Color BG_COLOR    = new Color(0xFAF3E0);
-    private static final Color PEG_SELECTED = new Color(0x800020);
     private static final Color BOARD_COLOR = new Color(0x8B6914);
     private static final Color TEXT_COLOR  = new Color(0x2C3E50);
 
@@ -36,7 +37,6 @@ public class SolitaireView extends JFrame {
 
     private JButton randomizeButton;
     private JButton autoplayButton;
-
     private JCheckBox recordGameCheckbox;
     private JButton replayButton;
 
@@ -53,7 +53,9 @@ public class SolitaireView extends JFrame {
 
     private ViewListener viewListener;
 
+    // ------------------------------------------------------------------
     // Construction
+    // ------------------------------------------------------------------
 
     public SolitaireView() {
         super("Peg Solitaire — English (7x7)");
@@ -81,19 +83,13 @@ public class SolitaireView extends JFrame {
         newGameButton.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
         newGameButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         newGameButton.addActionListener(e -> {
-
-            // If already on the home screen, do nothing
-            if (!isGameShowing()) {
-                return;
-            }
-
+            if (!isGameShowing()) return;
             int result = JOptionPane.showConfirmDialog(
                     this,
                     "Return to the home screen?",
                     "Home",
                     JOptionPane.YES_NO_OPTION
             );
-
             if (result == JOptionPane.YES_OPTION) {
                 if (viewListener != null) viewListener.onGoHome();
                 showHome();
@@ -107,11 +103,8 @@ public class SolitaireView extends JFrame {
         randomizeButton.setFocusPainted(false);
         randomizeButton.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
         randomizeButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
         randomizeButton.addActionListener(e -> {
-            if (viewListener != null) {
-                viewListener.onRandomize();
-            }
+            if (viewListener != null) viewListener.onRandomize();
         });
 
         autoplayButton = new JButton("Autoplay");
@@ -121,11 +114,8 @@ public class SolitaireView extends JFrame {
         autoplayButton.setFocusPainted(false);
         autoplayButton.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
         autoplayButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
         autoplayButton.addActionListener(e -> {
-            if (viewListener != null) {
-                viewListener.onAutoplay();
-            }
+            if (viewListener != null) viewListener.onAutoplay();
         });
 
         recordGameCheckbox = new JCheckBox("Record game");
@@ -133,7 +123,6 @@ public class SolitaireView extends JFrame {
         recordGameCheckbox.setBackground(BOARD_COLOR);
         recordGameCheckbox.setForeground(Color.WHITE);
         recordGameCheckbox.setFocusPainted(false);
-
         recordGameCheckbox.addActionListener(e -> {
             if (viewListener != null) {
                 if (recordGameCheckbox.isSelected()) {
@@ -157,7 +146,6 @@ public class SolitaireView extends JFrame {
 
         recordGameCheckbox.setVisible(false);
         replayButton.setVisible(false);
-
         randomizeButton.setVisible(false);
         autoplayButton.setVisible(false);
 
@@ -173,7 +161,7 @@ public class SolitaireView extends JFrame {
 
         // Panels that switch between HOME and GAME
         cardLayout = new CardLayout();
-        mainPanel = new JPanel(cardLayout);
+        mainPanel  = new JPanel(cardLayout);
 
         // Game panel
         boardPanel = new BoardPanel();
@@ -195,7 +183,6 @@ public class SolitaireView extends JFrame {
 
         mainPanel.add(homePanel, HOME);
         mainPanel.add(gamePanel, GAME);
-
         add(mainPanel, BorderLayout.CENTER);
 
         // Status bar
@@ -206,29 +193,30 @@ public class SolitaireView extends JFrame {
         add(statusLabel, BorderLayout.SOUTH);
 
         cardLayout.show(mainPanel, HOME);
-
         pack();
         setLocationRelativeTo(null);
         setResizable(false);
     }
 
+    // ------------------------------------------------------------------
+    // Accessors
+    // ------------------------------------------------------------------
+
     public String getSelectedBoardType() { return homePanel.getSelectedType(); }
     public int    getSelectedBoardSize() { return homePanel.getSelectedSize(); }
+    public boolean isRecordingEnabled()  { return recordGameCheckbox.isSelected(); }
 
+    // ------------------------------------------------------------------
     // Wiring
-    public void setViewListener(ViewListener listener) {
-        this.viewListener = listener;
-    }
+    // ------------------------------------------------------------------
 
-    public void setCellClickListener(CellButton.CellClickListener listener) {
-        boardPanel.setCellClickListener(listener);
-    }
+    public void setViewListener(ViewListener listener)                      { this.viewListener = listener; }
+    public void setCellClickListener(CellButton.CellClickListener listener) { boardPanel.setCellClickListener(listener); }
+    public void setModel(SolitaireModel model)                              { boardPanel.setModel(model); }
 
-    public void setModel(SolitaireModel model) {
-        boardPanel.setModel(model);
-    }
-
+    // ------------------------------------------------------------------
     // Update methods (called by controller)
+    // ------------------------------------------------------------------
 
     public void refreshBoard()                    { boardPanel.refresh(); }
     public void setSelectedCell(int row, int col) { boardPanel.setSelectedCell(row, col); }
@@ -236,16 +224,50 @@ public class SolitaireView extends JFrame {
     public void setStatus(String msg)             { statusLabel.setText(msg); }
     public void setPegsLabel(int count)           { pegsLabel.setText("Pegs: " + count); }
 
+    // ------------------------------------------------------------------
+    // File dialogs (Sprint 4: moved from controller to keep UI in view)
+    // ------------------------------------------------------------------
+
+    /**
+     * Shows a save file dialog filtered to .txt files.
+     * Returns the chosen absolute path (with .txt extension guaranteed),
+     * or null if the user cancelled.
+     */
+    public String showSaveDialog() {
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Save recorded game as...");
+        fc.setFileFilter(new FileNameExtensionFilter("Text files (*.txt)", "txt"));
+        int result = fc.showSaveDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) return null;
+        String filename = fc.getSelectedFile().getAbsolutePath();
+        if (!filename.endsWith(".txt")) filename += ".txt";
+        return filename;
+    }
+
+    /**
+     * Shows an open file dialog filtered to .txt files.
+     * Returns the chosen absolute path, or null if the user cancelled.
+     */
+    public String showOpenDialog() {
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Select a recorded game file");
+        fc.setFileFilter(new FileNameExtensionFilter("Text files (*.txt)", "txt"));
+        int result = fc.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) return null;
+        return fc.getSelectedFile().getAbsolutePath();
+    }
+
+    // ------------------------------------------------------------------
+    // Screen switching
+    // ------------------------------------------------------------------
+
     public void showGame() {
         cardLayout.show(mainPanel, GAME);
         gameShowing = true;
-
         randomizeButton.setVisible(true);
         autoplayButton.setVisible(true);
-
         replayButton.setVisible(true);
         recordGameCheckbox.setVisible(true);
-
         pack();
         setLocationRelativeTo(null);
         revalidate();
@@ -255,24 +277,17 @@ public class SolitaireView extends JFrame {
     public void showHome() {
         cardLayout.show(mainPanel, HOME);
         gameShowing = false;
-
         randomizeButton.setVisible(false);
         autoplayButton.setVisible(false);
-
         replayButton.setVisible(false);
         recordGameCheckbox.setVisible(false);
-
         pack();
         setLocationRelativeTo(null);
         revalidate();
         repaint();
     }
 
-    public boolean isRecordingEnabled() {
-        return recordGameCheckbox.isSelected();
-    }
-
-    private boolean isGameShowing() { return gameShowing;}
+    private boolean isGameShowing() { return gameShowing; }
 
     public void showGameOver(boolean won) {
         String msg = won
