@@ -36,6 +36,8 @@ public abstract class SolitaireModel {
                 {0, -1}, {0, 1}
         };
     }
+    public boolean needsRowOffset() { return false; }
+
 
     // ------------------------------------------------------------------
     // Initialisation
