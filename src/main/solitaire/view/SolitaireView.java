@@ -14,6 +14,7 @@ import main.solitaire.model.*;
  * Sprint 4 decoupling: file chooser dialogs moved here from controller,
  * keeping all UI concerns in the view layer.
  */
+
 public class SolitaireView extends JFrame {
 
     private static final Color BG_COLOR    = new Color(0xFAF3E0);
