@@ -18,6 +18,7 @@ import main.solitaire.recorder.*;
  * Sprint 4 decoupling: file chooser dialogs moved to SolitaireView,
  * so the controller only handles game logic and coordination.
  */
+
 public class SolitaireController
         implements SolitaireView.ViewListener,
         CellButton.CellClickListener {
