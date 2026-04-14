@@ -4,22 +4,23 @@ import javax.swing.*;
 import java.awt.*;
 
 import main.solitaire.model.*;
-import main.solitaire.view.*;
 
 /**
- * BoardPanel is a JPanel that displays the game board using a grid of CellButtons:
- * - creates a CellButton for each cell on the board
- * - updates the buttons to match
- * - the current state of the model
- * - forwards click events to the controller
- * - keeps track of which cell is currently selected and highlights it
+ * BoardPanel is a JPanel that displays the game board using a grid of CellButtons.
+ * - Creates a CellButton for each cell on the board
+ * - Updates the buttons to match the current state of the model
+ * - Forwards click events to the controller
+ * - Keeps track of which cell is currently selected and highlights it
+ *
+ * Decoupling improvements (Sprint 4):
+ * - Uses CellButton.CellState enum instead of SolitaireModel int constants
+ * - Uses model.needsRowOffset() instead of instanceof HexagonModel
  */
-
 public class BoardPanel extends JPanel implements CellButton.CellClickListener {
 
     // State
-    private SolitaireModel   model;
-    private CellButton[][]   cells;
+    private SolitaireModel model;
+    private CellButton[][] cells;
 
     /** External listener supplied by the controller/view. */
     private CellButton.CellClickListener externalListener;
@@ -30,15 +31,10 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
     // Construction
     public BoardPanel() {
         setOpaque(false);
-        // Layout is set once the model is attached
     }
 
-    // Model binding
+    // ── Model binding ────────────────────────────────────────────────
 
-    /**
-     * Attach a model and build the cell grid.
-     * Safe to call multiple times (e.g. on New Game with a new model instance).
-     */
     public void setModel(SolitaireModel model) {
         this.model = model;
         rebuildGrid();
@@ -49,26 +45,28 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
 
         int size = model.getBoardSize();
         cells = new CellButton[size][size];
-        boolean isHex = model instanceof HexagonModel;
+
+        // Use model method instead of instanceof — reduces coupling
+        boolean needsOffset = model.needsRowOffset();
 
         setLayout(new GridLayout(size, 1));
 
         for (int r = 0; r < size; r++) {
-
             JPanel rowPanel = new JPanel();
             rowPanel.setLayout(new BoxLayout(rowPanel, BoxLayout.X_AXIS));
             rowPanel.setOpaque(false);
 
-            // For hexagon, offset alternate rows by half a cell width
-            if (isHex && r % 2 != 0) {
+            if (needsOffset && r % 2 != 0) {
                 rowPanel.add(Box.createHorizontalStrut(CellButton.CELL_SIZE / 2));
             }
 
             rowPanel.add(Box.createHorizontalGlue());
 
             for (int c = 0; c < size; c++) {
-                int state = model.getCellState(r, c);
-                if (state != SolitaireModel.INVALID) {
+                int raw = model.getCellState(r, c);
+                CellButton.CellState state = toCellState(raw);
+
+                if (state != CellButton.CellState.INVALID) {
                     CellButton btn = new CellButton(r, c, state, this);
                     cells[r][c] = btn;
                     rowPanel.add(btn);
@@ -85,7 +83,8 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
         repaint();
     }
 
-    // Refresh / selection
+    // ── Refresh / selection ──────────────────────────────────────────
+
     public void refresh() {
         if (model == null || cells == null) return;
 
@@ -94,7 +93,7 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
                 if (cells[r][c] != null) {
-                    cells[r][c].setCellState(model.getCellState(r, c));
+                    cells[r][c].setCellState(toCellState(model.getCellState(r, c)));
                     cells[r][c].setSelected(r == selectedRow && c == selectedCol);
                 }
             }
@@ -113,9 +112,8 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
         refresh();
     }
 
-    // CellClickListener — forward to the external listener (controller)
+    // ── CellClickListener — forward to the external listener ─────────
 
-    /** Register the upstream listener (set by SolitaireView). */
     public void setCellClickListener(CellButton.CellClickListener listener) {
         this.externalListener = listener;
     }
@@ -125,5 +123,18 @@ public class BoardPanel extends JPanel implements CellButton.CellClickListener {
         if (externalListener != null) {
             externalListener.onCellClicked(row, col);
         }
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────
+
+    /**
+     * Maps a model int state to a view-level CellState enum.
+     * This is the only place BoardPanel knows about model int constants,
+     * keeping the mapping contained in one method.
+     */
+    private CellButton.CellState toCellState(int s) {
+        if (s == SolitaireModel.PEG)   return CellButton.CellState.PEG;
+        if (s == SolitaireModel.EMPTY) return CellButton.CellState.EMPTY;
+        return CellButton.CellState.INVALID;
     }
 }
