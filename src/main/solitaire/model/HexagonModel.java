@@ -32,6 +32,9 @@ public class HexagonModel extends SolitaireModel {
         };
     }
 
+    @Override
+    public boolean needsRowOffset() { return true; }
+
     /** Returns width of a given row. */
     private int rowWidth(int r) {
         return base + Math.min(r, size - 1 - r);
