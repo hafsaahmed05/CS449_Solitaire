@@ -52,21 +52,14 @@ public class SolitaireController
 
     @Override
     public void onNewGame() {
-        // Read user selections from the view
-        String type = view.getSelectedBoardType();  // "English" / "Hexagon" / "Diamond"
+        String type = view.getSelectedBoardType();
         int    size = view.getSelectedBoardSize();
 
         model = buildModel(type, size);
         clearSelection();
         view.setModel(model);
         syncView();
-
-        if (view.isRecordingEnabled()) {
-            recorder.startRecording(type, size, model.getBoardState());
-            view.setStatus("New game started. Recording enabled.");
-        } else {
-            view.setStatus("New game started. Select a peg to move.");
-        }
+        view.setStatus("New game started. Select a peg to move.");
     }
 
     private SolitaireModel buildModel(String type, int size) {
@@ -122,19 +115,20 @@ public class SolitaireController
                 syncView();
 
                 if (model.isWon()) {
-                    saveRecordingIfEnabled();
                     view.showGameOver(true);
-                } else if (model.isGameOver()) {
                     saveRecordingIfEnabled();
+                } else if (model.isGameOver()) {
                     view.showGameOver(false);
+                    saveRecordingIfEnabled();
                 }
+            } else {
+                view.setStatus("Illegal move — select a peg and jump over an adjacent peg.");
             }
         }
     }
 
     @Override
     public void onAutoplay() {
-        // start recording autoplay if checkbox is ticked
         if (view.isRecordingEnabled()) {
             recorder.startRecording(
                     view.getSelectedBoardType(),
@@ -145,7 +139,6 @@ public class SolitaireController
 
         new Thread(() -> {
             while (!model.isGameOver()) {
-                // Capture move coords before making the move
                 int[] moveCoords = model.getNextMove();
 
                 if (moveCoords == null) break;
@@ -153,10 +146,7 @@ public class SolitaireController
                 boolean moved = model.makeAnyMove();
                 if (!moved) break;
 
-                // record autoplay move
-                if (moveCoords != null) {
-                    recorder.recordMove(moveCoords[0], moveCoords[1], moveCoords[2], moveCoords[3]);
-                }
+                recorder.recordMove(moveCoords[0], moveCoords[1], moveCoords[2], moveCoords[3]);
 
                 try {
                     Thread.sleep(300);
@@ -177,27 +167,22 @@ public class SolitaireController
         }).start();
     }
 
-
     @Override
     public void onRandomize() {
         model.randomizeBoard();
         clearSelection();
         syncView();
-
-        // record the randomize event as a full board snapshot
         recorder.recordRandomize(model.getBoardState());
         view.setStatus("Board randomized!");
     }
 
     @Override
     public void onReplay() {
-        // Open a file chooser so the user picks the recorded game file
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Select a recorded game file");
         fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text files (*.txt)", "txt"));
 
         int result = fileChooser.showOpenDialog(null);
-
         if (result != JFileChooser.APPROVE_OPTION) return;
 
         String filename = fileChooser.getSelectedFile().getAbsolutePath();
@@ -210,10 +195,10 @@ public class SolitaireController
             return;
         }
 
-        // Validate the file is a proper recording
-        boolean hasBoardType    = lines.stream().anyMatch(GameRecorder::isBoardType);
-        boolean hasBoardSize    = lines.stream().anyMatch(GameRecorder::isBoardSize);
-        boolean hasInitialState = lines.stream().anyMatch(GameRecorder::isInitialState);
+        // Validate required fields exist
+        boolean hasBoardType      = lines.stream().anyMatch(GameRecorder::isBoardType);
+        boolean hasBoardSize      = lines.stream().anyMatch(GameRecorder::isBoardSize);
+        boolean hasInitialState   = lines.stream().anyMatch(GameRecorder::isInitialState);
         boolean hasAtLeastOneMove = lines.stream().anyMatch(GameRecorder::isMove);
 
         if (lines.isEmpty() || !hasBoardType || !hasBoardSize || !hasInitialState || !hasAtLeastOneMove) {
@@ -221,7 +206,7 @@ public class SolitaireController
             return;
         }
 
-// Validate every line is a recognized format
+        // Validate every line is a recognized format
         for (String line : lines) {
             if (!GameRecorder.isBoardType(line)
                     && !GameRecorder.isBoardSize(line)
@@ -233,7 +218,7 @@ public class SolitaireController
             }
         }
 
-// Validate move lines are actually parseable
+        // Validate move lines are parseable
         try {
             for (String line : lines) {
                 if (GameRecorder.isMove(line)) {
@@ -250,7 +235,7 @@ public class SolitaireController
             return;
         }
 
-        // Parse header lines to reconstruct the initial game
+        // Parse header
         String boardType = "English";
         int boardSize = 7;
         int[] initialState = null;
@@ -261,7 +246,7 @@ public class SolitaireController
             if (GameRecorder.isInitialState(line)) initialState = GameRecorder.parseBoardState(line);
         }
 
-        // Rebuild the model from the recorded starting state
+        // Rebuild model from recorded starting state
         model = buildModel(boardType, boardSize);
         if (initialState != null) model.setBoardState(initialState);
         clearSelection();
@@ -269,7 +254,6 @@ public class SolitaireController
         syncView();
         view.setStatus("Replaying game...");
 
-        // Replay moves on a background thread with a delay so the user can watch
         final List<String> replayLines = lines;
         new Thread(() -> {
             for (String line : replayLines) {
@@ -296,6 +280,30 @@ public class SolitaireController
         }).start();
     }
 
+    @Override
+    public void onGoHome() {
+        saveRecordingIfEnabled();
+    }
+
+    @Override
+    public void onStartRecording() {
+        recorder.startRecording(
+                view.getSelectedBoardType(),
+                view.getSelectedBoardSize(),
+                model.getBoardState()
+        );
+        view.setStatus("Recording enabled.");
+    }
+
+    @Override
+    public void onStopRecording() {
+        saveRecordingIfEnabled();
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
     private void saveRecordingIfEnabled() {
         if (!recorder.isRecording()) return;
         recorder.stopRecording();
@@ -317,11 +325,6 @@ public class SolitaireController
             }
         }
     }
-
-
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
 
     private void clearSelection() {
         selectedRow = -1;

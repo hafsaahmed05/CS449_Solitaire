@@ -46,6 +46,9 @@ public class SolitaireView extends JFrame {
         void onRandomize();
         void onAutoplay();
         void onReplay();
+        void onGoHome();
+        void onStartRecording();
+        void onStopRecording();
     }
 
     private ViewListener viewListener;
@@ -92,6 +95,7 @@ public class SolitaireView extends JFrame {
             );
 
             if (result == JOptionPane.YES_OPTION) {
+                if (viewListener != null) viewListener.onGoHome();
                 showHome();
             }
         });
@@ -129,6 +133,16 @@ public class SolitaireView extends JFrame {
         recordGameCheckbox.setBackground(BOARD_COLOR);
         recordGameCheckbox.setForeground(Color.WHITE);
         recordGameCheckbox.setFocusPainted(false);
+
+        recordGameCheckbox.addActionListener(e -> {
+            if (viewListener != null) {
+                if (recordGameCheckbox.isSelected()) {
+                    viewListener.onStartRecording();
+                } else {
+                    viewListener.onStopRecording();
+                }
+            }
+        });
 
         replayButton = new JButton("Replay");
         replayButton.setFont(new Font("Georgia", Font.BOLD, 13));
